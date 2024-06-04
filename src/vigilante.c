@@ -54,6 +54,11 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "waitpid(tracee, NULL, 0) failed\n");
     return ERR_WAITPID;
   }
+  
+  if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) == -1) {
+    werr("ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) failed\n", stderr, tracee);
+    return ERR_PTRACE_SETOPTIONS_TRACESYSGOOD;
+  }
 
   if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) == -1) {
     werr("ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) failed\n", stderr, tracee);
