@@ -1,1 +1,1 @@
-Vigilante is NOT strictly conforming to the ISO/IEC 9899:2011 specification.
+Vigilante depends on some implementation-specific things to work and is NOT strictly conforming to the ISO/IEC 9899:2011 specification.
