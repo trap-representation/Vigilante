@@ -1,1 +1,1 @@
-Vigilante depends on some implementation-specific things to work and is NOT strictly conforming to the ISO/IEC 9899:2011 specification.
+Vigilante depends on some implementation-specific things to work and is NOT strictly conforming to the ISO/IEC 9899:2011 specification. However, the details it assumes about implementations hold true for most C implementations you'll find, so if you're translating it with something like Clang, GCC, or TCC, you most likely have nothing to worry about.
