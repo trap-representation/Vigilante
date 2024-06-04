@@ -9,8 +9,8 @@
 
 #include "utils.h"
 
-#define ERROR_PREFIX "guarddog (error): "
-#define INFO_PREFIX "guarddog (info): "
+#define ERROR_PREFIX "vigilante (error): "
+#define INFO_PREFIX "vigilante (info): "
 
 enum error wait_syscall(pid_t tracee) {
   while (1) {
@@ -61,13 +61,13 @@ enum error get_pid(char *pid_s, pid_t *tracee) {
 
 enum error perform_trace(unsigned long long int sc, struct user_regs_struct user_regs, struct trace_def *td, size_t tdn, pid_t tracee) {
   if (td == NULL) {
-    fprintf(stderr, INFO_PREFIX "(%llu): syscall: %llu\n", (unsigned long long int) tracee, sc);
+    fprintf(stderr, INFO_PREFIX "(%llu):  syscall: %llu\n", (unsigned long long int) tracee, sc);
     return ERR_SUCCESS;
   }
 
   for (size_t i = 0; i < tdn; i++) {
     if (sc == td[i].syscall) {
-      fprintf(stderr, INFO_PREFIX "(%llu): syscall: %llu\n", (unsigned long long int) tracee, sc);
+      fprintf(stderr, INFO_PREFIX "(%llu):  syscall: %llu\n", (unsigned long long int) tracee, sc);
       for (enum reg j = 0; j < REG_N; j++) {
 	char *rs;
 	unsigned long long int rv;
@@ -205,7 +205,7 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	    break;
 	  }
 
-	  fprintf(stderr, INFO_PREFIX "(%llu):  %s: %llu\n", (unsigned long long int) tracee, rs, rv);
+	  fprintf(stderr, INFO_PREFIX "(%llu):   %s: %llu\n", (unsigned long long int) tracee, rs, rv);
 
 	  unsigned long long int r = rv;
 	  _Bool exhausted = 0;
@@ -303,7 +303,7 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      break;
 
 	    case D_END:
-	      fprintf(stderr, INFO_PREFIX "(%llu):    deref: %llu\n", (unsigned long long int) tracee, r);
+	      fprintf(stderr, INFO_PREFIX "(%llu):     deref: %llu\n", (unsigned long long int) tracee, r);
 	      exhausted = 1;
 	      break;
 
