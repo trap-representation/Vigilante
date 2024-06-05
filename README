@@ -1,5 +1,5 @@
 Vigilante depends on some implementation-specific behavior to work and is NOT strictly conforming to the ISO/IEC 9899:2011 specification. However, the details it assumes about implementations hold true for most C implementations you'll find, so if you're translating it with something like Clang, GCC, or TCC, you most likely have nothing to worry about.
-Currently, Vigilante only works on Linux (Intel 64) and similar environments that can emulate its behavior. Check the source for the Linux-specific headers it includes. If I have the time, I might add support for ARM architectures down the line.
+Currently, Vigilante only works on Linux (Intel 64) and similar environments that can emulate its behavior. Check the source for the Linux-specific headers it includes. If I have the time, I might add support for ARM architectures in the future.
 Before you translate Vigilante, make the necessary changes to vigilante/src/vconfig.h according to your implementation.
 
 WTDF is meant to be translated as a library. Link it with your own program to generate TDF files.
