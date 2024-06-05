@@ -13,12 +13,25 @@
 
 #define ERROR_PREFIX "vigilante (error): "
 #define INFO_PREFIX "vigilante (info): "
+#define WARN_PREFIX "vigilante (warn): "
 
 #ifdef ENDIAN_LITTLE
 #elif defined(ENDIAN_BIG)
 #else
 _Static_assert(0, "define the endianness of your implementation in vconfig.h");
 #endif
+
+void werr(char *err, FILE *f, pid_t tracee) {
+  fprintf(f, ERROR_PREFIX "(%llu): %s", (unsigned long long int) tracee, err);
+}
+
+void winfo(char *info, FILE *f, pid_t tracee) {
+  fprintf(f, INFO_PREFIX "(%llu): %s", (unsigned long long int) tracee, info);
+}
+
+void wwarn(char *warn, FILE *f, pid_t tracee) {
+  fprintf(f, WARN_PREFIX "(%llu): %s", (unsigned long long int) tracee, warn);
+}
 
 enum error wait_syscall(pid_t tracee) {
   while (1) {
@@ -40,14 +53,6 @@ enum error wait_syscall(pid_t tracee) {
       return ERR_STOPPED;
     }
   }
-}
-
-void werr(char *err, FILE *f, pid_t tracee) {
-  fprintf(f, ERROR_PREFIX "(%llu): %s", (unsigned long long int) tracee, err);
-}
-
-void winfo(char *info, FILE *f, pid_t tracee) {
-  fprintf(f, INFO_PREFIX "(%llu): %s", (unsigned long long int) tracee, info);
 }
 
 enum error get_pid(char *pid_s, pid_t *tracee) {
@@ -134,8 +139,9 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
   }
 
   for (size_t tdi = 0; tdi < tdn; tdi++) {
-    if (sc == td[tdi].syscall) {
+    if (sc == td[tdi].syscall || td[tdi].syscall == SC_ALL) {
       fprintf(stderr, INFO_PREFIX "(%llu): syscall: %llu\n", (unsigned long long int) tracee, sc);
+
       for (enum reg ri = 0; ri < REG_N; ri++) {
 	if (td[tdi].trace_regs[ri] == TRACE) {
 	  fprintf(stderr, INFO_PREFIX "(%llu):  %s: %llu\n", (unsigned long long int) tracee, rss[ri], rvs[ri]);
@@ -152,23 +158,22 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		winfo("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
 	      }
 	    }
 	    else if(td[tdi].deref[ri][dl] == D_DW) {
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -185,15 +190,15 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -207,8 +212,8 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -222,8 +227,8 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
 
 	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		break;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -247,8 +252,8 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
+		  wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  break;
 		}
 
 #ifdef ENDIAN_LITTLE
@@ -273,8 +278,8 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
+		  wwarn("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  break;
 		}
 
 		if (*(char *) &s != '\0') {
@@ -304,6 +309,8 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	  }
 	}
       }
+
+      break;
     }
   }
 

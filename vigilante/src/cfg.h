@@ -1,8 +1,12 @@
 #ifndef CFG_H
 #define CFG_H
 
+#include "vconfig.h"
+
 #define REG_N 27
-#define DEREF_LEVEL 512
+#define DEREF_LEVEL VCONF_DEREF_LEVEL
+
+#define SC_ALL VCONF_SC_ALL
 
 enum trace {
   NOTRACE,
