@@ -23,12 +23,12 @@
 #include "wtdf.h"
 
 void init_td(struct trace_def *tda, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    tda[i].syscall = 0;
+  for (size_t tdi = 0; tdi < n; tdi++) {
+    tda[tdi].syscall = 0;
 
-    for (size_t j = 0; j < REG_N; j++) {
-      tda[i].trace_reg[j] = NOTRACE;
-      tda[i].deref[j][0] = D_END;
+    for (size_t ri = 0; ri < REG_N; ri++) {
+      tda[tdi].trace_regs[ri] = NOTRACE;
+      tda[tdi].deref[ri][0] = D_END;
     }
   }
 }
@@ -37,8 +37,8 @@ void trace_syscall(unsigned long long int sc, struct trace_def *td) {
   td->syscall = sc;
 }
 
-void trace_reg(enum reg r, struct trace_def *td) {
-  td->trace_reg[r] = TRACE;
+void trace_regs(enum reg r, struct trace_def *td) {
+  td->trace_regs[r] = TRACE;
 }
 
 void trace_deref(enum dereference *d, size_t n, enum reg r, struct trace_def *td) {
@@ -70,21 +70,21 @@ int write_td(struct trace_def *td, size_t n, char *file) {
 }
 
 enum error verify(struct trace_def *tda, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    for (size_t j = 0; j < REG_N; j++) {
-      if (tda[i].trace_reg[j] == NOTRACE && tda[i].deref[j][0] != D_END) {
+  for (size_t tdi = 0; tdi < n; tdi++) {
+    for (size_t ri = 0; ri < REG_N; ri++) {
+      if (tda[tdi].trace_regs[ri] == NOTRACE && tda[tdi].deref[ri][0] != D_END) {
 	return ERR_DEREF_ON_NOTRACE;
       }
 
-      if (tda[i].trace_reg[j] == TRACE) {
+      if (tda[tdi].trace_regs[ri] == TRACE) {
 	_Bool ends_correct = 0;
 
-	for (size_t k = 0; k < DEREF_LEVEL; k++) {
-	  if (tda[i].deref[j][k] != D_END && tda[i].deref[j][k] != D_DW && tda[i].deref[j][k] != D_QW && tda[i].deref[j][k] != D_STRING && tda[i].deref[j][k] != D_END) {
+	for (size_t dl = 0; dl < DEREF_LEVEL; dl++) {
+	  if (tda[tdi].deref[ri][dl] != D_W && tda[tdi].deref[ri][dl] != D_DW && tda[tdi].deref[ri][dl] != D_QW && tda[tdi].deref[ri][dl] != D_NSTRING && tda[tdi].deref[ri][dl] != D_STRING_R15 && tda[tdi].deref[ri][dl] != D_STRING_R14 && tda[tdi].deref[ri][dl] != D_STRING_R13 && tda[tdi].deref[ri][dl] != D_STRING_R12 && tda[tdi].deref[ri][dl] != D_STRING_RBP && tda[tdi].deref[ri][dl] != D_STRING_RBX && tda[tdi].deref[ri][dl] != D_STRING_R11 && tda[tdi].deref[ri][dl] != D_STRING_R10 && tda[tdi].deref[ri][dl] != D_STRING_R9 && tda[tdi].deref[ri][dl] != D_STRING_R8 && tda[tdi].deref[ri][dl] != D_STRING_RAX && tda[tdi].deref[ri][dl] != D_STRING_RCX && tda[tdi].deref[ri][dl] != D_STRING_RDX && tda[tdi].deref[ri][dl] != D_STRING_RSI && tda[tdi].deref[ri][dl] != D_STRING_RDI && tda[tdi].deref[ri][dl] != D_STRING_RIP && tda[tdi].deref[ri][dl] != D_STRING_CS && tda[tdi].deref[ri][dl] != D_STRING_EFLAGS && tda[tdi].deref[ri][dl] != D_STRING_RSP && tda[tdi].deref[ri][dl] != D_STRING_SS && tda[tdi].deref[ri][dl] != D_STRING_FS_BASE && tda[tdi].deref[ri][dl] != D_STRING_GS_BASE && tda[tdi].deref[ri][dl] != D_STRING_DS && tda[tdi].deref[ri][dl] != D_STRING_ES && tda[tdi].deref[ri][dl] != D_STRING_FS && tda[tdi].deref[ri][dl] != D_STRING_GS && tda[tdi].deref[ri][dl] != D_END) {
 	    return ERR_INVALID_DEREF;
 	  }
 
-	  if (tda[i].deref[j][k] == D_END) {
+	  if (tda[tdi].deref[ri][dl] == D_END) {
 	    ends_correct = 1;
 	    break;
 	  }

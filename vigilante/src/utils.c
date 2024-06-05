@@ -53,10 +53,10 @@ void winfo(char *info, FILE *f, pid_t tracee) {
 enum error get_pid(char *pid_s, pid_t *tracee) {
   *tracee = 0;
 
-  for (size_t i = 0; pid_s[i] != '\0'; i++) {
-    if (pid_s[i] >= '0' && pid_s[i] <= '9') {
+  for (size_t pc = 0; pid_s[pc] != '\0'; pc++) {
+    if (pid_s[pc] >= '0' && pid_s[pc] <= '9') {
       *tracee *= 10;
-      *tracee += pid_s[i] - '0';
+      *tracee += pid_s[pc] - '0';
     }
     else {
       werr("invalid PID\n", stderr, 0);
@@ -68,162 +68,87 @@ enum error get_pid(char *pid_s, pid_t *tracee) {
 }
 
 enum error perform_trace(unsigned long long int sc, struct user_regs_struct user_regs, struct trace_def *td, size_t tdn, pid_t tracee) {
+  /* Do not change the order of the stored values in rvs and rss */
+
+  unsigned long long int rvs[] = {
+    user_regs.r15,
+    user_regs.r14,
+    user_regs.r13,
+    user_regs.r12,
+    user_regs.rbp,
+    user_regs.rbx,
+    user_regs.r11,
+    user_regs.r10,
+    user_regs.r9,
+    user_regs.r8,
+    user_regs.rax,
+    user_regs.rcx,
+    user_regs.rdx,
+    user_regs.rsi,
+    user_regs.rdi,
+    user_regs.rip,
+    user_regs.cs,
+    user_regs.eflags,
+    user_regs.rsp,
+    user_regs.ss,
+    user_regs.fs_base,
+    user_regs.gs_base,
+    user_regs.ds,
+    user_regs.es,
+    user_regs.fs,
+    user_regs.gs
+  };
+
+  char *rss[] = {
+    "R15",
+    "R14",
+    "R13",
+    "R12",
+    "RBP",
+    "RBX",
+    "R11",
+    "R10",
+    "R9",
+    "R8",
+    "RAX",
+    "RCX",
+    "RDX",
+    "RSI",
+    "RDI",
+    "RIP",
+    "CS",
+    "EFLAGS",
+    "RSP",
+    "SS",
+    "FS_BASE",
+    "GS_BASE",
+    "DS",
+    "ES",
+    "FX",
+    "GS"
+  };
+
   if (td == NULL) {
     fprintf(stderr, INFO_PREFIX "(%llu): syscall: %llu\n", (unsigned long long int) tracee, sc);
     return ERR_SUCCESS;
   }
 
-  for (size_t i = 0; i < tdn; i++) {
-    if (sc == td[i].syscall) {
+  for (size_t tdi = 0; tdi < tdn; tdi++) {
+    if (sc == td[tdi].syscall) {
       fprintf(stderr, INFO_PREFIX "(%llu): syscall: %llu\n", (unsigned long long int) tracee, sc);
-      for (enum reg j = 0; j < REG_N; j++) {
-	char *rs;
-	unsigned long long int rv;
+      for (enum reg ri = 0; ri < REG_N; ri++) {
+	if (td[tdi].trace_regs[ri] == TRACE) {
+	  fprintf(stderr, INFO_PREFIX "(%llu):  %s: %llu\n", (unsigned long long int) tracee, rss[ri], rvs[ri]);
 
-	if (td[i].trace_reg[j] == TRACE) {
-	  switch (j) {
-          case REG_R15:
-	    rs = "R15";
-            rv = user_regs.r15;
-	    break;
-
-          case REG_R14:
-	    rs = "R14";
-            rv = user_regs.r14;
-	    break;
-
-          case REG_R13:
-	    rs = "R13";
-            rv = user_regs.r13;
-	    break;
-
-          case REG_R12:
-	    rs = "R12";
-            rv = user_regs.r12;
-	    break;
-
-          case REG_RBP:
-	    rs = "RBP";
-            rv = user_regs.rbp;
-	    break;
-
-          case REG_RBX:
-	    rs = "RBX";
-            rv = user_regs.rbx;
-	    break;
-
-          case REG_R11:
-	    rs = "R11";
-            rv = user_regs.r11;
-	    break;
-
-          case REG_R10:
-	    rs = "R10";
-            rv = user_regs.r10;
-	    break;
-
-          case REG_R9:
-	    rs = "R9";
-            rv = user_regs.r9;
-	    break;
-
-          case REG_R8:
-	    rs = "R8";
-            rv = user_regs.r8;
-	    break;
-
-          case REG_RAX:
-	    rs = "RAX";
-            rv = user_regs.rax;
-	    break;
-
-          case REG_RCX:
-	    rs = "RCX";
-            rv = user_regs.rcx;
-	    break;
-
-          case REG_RDX:
-	    rs = "RDX";
-            rv = user_regs.rdx;
-	    break;
-
-          case REG_RSI:
-	    rs = "RSI";
-            rv = user_regs.rsi;
-	    break;
-
-          case REG_RDI:
-	    rs = "RDI";
-            rv = user_regs.rdi;
-	    break;
-
-          case REG_RIP:
-	    rs = "RIP";
-            rv = user_regs.rip;
-	    break;
-
-          case REG_CS:
-	    rs = "CS";
-            rv = user_regs.cs;
-	    break;
-
-          case REG_EFLAGS:
-	    rs = "EFLAGS";
-            rv = user_regs.eflags;
-	    break;
-
-          case REG_RSP:
-	    rs = "RSP";
-            rv = user_regs.rsp;
-	    break;
-
-          case REG_SS:
-	    rs = "SS";
-            rv = user_regs.ss;
-	    break;
-
-          case REG_FS_BASE:
-	    rs = "FS_BASE";
-            rv = user_regs.fs_base;
-	    break;
-
-          case REG_GS_BASE:
-	    rs = "GS_BASE";
-            rv = user_regs.gs_base;
-	    break;
-
-          case REG_DS:
-	    rs = "DS";
-            rv = user_regs.ds;
-	    break;
-
-          case REG_ES:
-	    rs = "ES";
-            rv = user_regs.es;
-	    break;
-
-          case REG_FS:
-	    rs = "FX";
-            rv = user_regs.fs;
-	    break;
-
-          case REG_GS:
-	    rs = "GS";
-            rv = user_regs.gs;
-	    break;
-	  }
-
-	  fprintf(stderr, INFO_PREFIX "(%llu):  %s: %llu\n", (unsigned long long int) tracee, rs, rv);
-
-	  unsigned long long int r = rv;
+	  unsigned long long int r = rvs[ri];
 	  _Bool exhausted = 0;
 
-	  if (td[i].deref[j][0] == D_END) {
+	  if (td[tdi].deref[ri][0] == D_END) {
 	    exhausted = 1;
 	  }
 
-	  for (size_t k = 0; !exhausted && k < DEREF_LEVEL; k++) {
-	    switch (td[i].deref[j][k]) {
+	  for (size_t dl = 0; !exhausted && dl < DEREF_LEVEL; dl++) {
+	    switch (td[tdi].deref[ri][dl]) {
 	    case D_W:
 	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
@@ -322,7 +247,39 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 
 	      break;
 
-	    case D_STRING:
+	    case D_STRING_R15: case D_STRING_R14: case D_STRING_R13: case D_STRING_R12: case D_STRING_RBP: case D_STRING_RBX: case D_STRING_R11: case D_STRING_R10: case D_STRING_R9: case D_STRING_R8: case D_STRING_RAX: case D_STRING_RCX: case D_STRING_RDX: case D_STRING_RSI: case D_STRING_RDI: case D_STRING_RIP: case D_STRING_CS: case D_STRING_EFLAGS: case D_STRING_RSP: case D_STRING_SS: case D_STRING_FS_BASE: case D_STRING_GS_BASE: case D_STRING_DS: case D_STRING_ES: case D_STRING_FS: case D_STRING_GS:
+	      {
+		winfo("   string: ", stderr, tracee);
+
+		unsigned long long int maddr = r + rvs[td[tdi].deref[ri][dl] - (_DNOUSE_STRINGS + 1)];
+
+		while (r < maddr) {
+		  errno = 0;
+
+		  long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+
+		  if (errno) {
+		    werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		    return ERR_PTRACE_PEEKTEXT;
+		  }
+
+#ifdef ENDIAN_LITTLE
+		  fputc(*(char *) &s, stderr);
+
+#elif defined(ENDIAN_BIG)
+		  fputc(((char *) &s)[WORD_SIZE - 1], stderr);
+
+#endif
+
+		  r++;
+		}
+
+		fputc('\n', stderr);
+	      }
+
+	      break;
+
+	    case D_NSTRING:
 	      winfo("   string: ", stderr, tracee);
 
 	      while (1) {
@@ -345,17 +302,22 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 		r++;
 	      }
 
+	      r++;
+
 	      fputc('\n', stderr);
 
 	      break;
 
 	    case D_END:
 	      fprintf(stderr, INFO_PREFIX "(%llu):    deref: %llu\n", (unsigned long long int) tracee, r);
+
 	      exhausted = 1;
+
 	      break;
 
 	    default:
 	      werr("illegal derefence\n", stderr, tracee);
+
 	      return ERR_ILLEGAL_DEREF;
 	    }
 	  }

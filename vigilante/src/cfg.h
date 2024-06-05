@@ -9,6 +9,8 @@ enum trace {
   TRACE
 };
 
+/* Do not change the order of the enumeration constants in reg */
+
 enum reg {
   REG_R15,
   REG_R14,
@@ -42,13 +44,40 @@ enum dereference {
   D_W,
   D_DW,
   D_QW,
-  D_STRING,
+  D_NSTRING,
+  _DNOUSE_STRINGS,
+  D_STRING_R15,
+  D_STRING_R14,
+  D_STRING_R13,
+  D_STRING_R12,
+  D_STRING_RBP,
+  D_STRING_RBX,
+  D_STRING_R11,
+  D_STRING_R10,
+  D_STRING_R9,
+  D_STRING_R8,
+  D_STRING_RAX,
+  D_STRING_RCX,
+  D_STRING_RDX,
+  D_STRING_RSI,
+  D_STRING_RDI,
+  D_STRING_RIP,
+  D_STRING_CS,
+  D_STRING_EFLAGS,
+  D_STRING_RSP,
+  D_STRING_SS,
+  D_STRING_FS_BASE,
+  D_STRING_GS_BASE,
+  D_STRING_DS,
+  D_STRING_ES,
+  D_STRING_FS,
+  D_STRING_GS,
   D_END
 };
 
 struct trace_def {
   unsigned long long int syscall;
-  _Bool trace_reg[REG_N];
+  _Bool trace_regs[REG_N];
   enum dereference deref[REG_N][DEREF_LEVEL];
 };
 
