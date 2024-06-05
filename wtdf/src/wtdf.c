@@ -20,8 +20,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <stdlib.h>
-
 #include "wtdf.h"
 
 void init_td(struct trace_def *tda, size_t n) {
