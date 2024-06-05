@@ -9,7 +9,7 @@ enum trace {
   TRACE
 };
 
-/* Do not change the order of the enumeration constants in reg */
+/* Do not change the order of the enumeration constants in reg and dereference*/
 
 enum reg {
   REG_R15,
@@ -72,6 +72,7 @@ enum dereference {
   D_STRING_ES,
   D_STRING_FS,
   D_STRING_GS,
+  _DNOUSE_STRINGE,
   D_END
 };
 

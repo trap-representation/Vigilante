@@ -148,138 +148,123 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	  }
 
 	  for (size_t dl = 0; !exhausted && dl < DEREF_LEVEL; dl++) {
-	    switch (td[tdi].deref[ri][dl]) {
-	    case D_W:
+	    if (td[tdi].deref[ri][dl] == D_W) {
 	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
 	      if (errno) {
 		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
 		return ERR_PTRACE_PEEKTEXT;
 	      }
+	    }
+	    else if(td[tdi].deref[ri][dl] == D_DW) {
+	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      break;
-
-	    case D_DW:
-	      {
-		long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-		long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-#ifdef ENDIAN_LITTLE
-		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
-
-#elif defined(ENDIAN_BIG)
-		memcpy(&tr, &ttr, WORD_SIZE);
-
-#endif
-
-		r = tr;
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
-	      break;
+	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	    case D_QW:
-	      {
-		long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-		long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-#ifdef ENDIAN_LITTLE
-		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
-
-#elif defined(ENDIAN_BIG)
-		memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
-
-#endif
-
-		ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-#ifdef ENDIAN_LITTLE
-		memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
-
-#elif defined(ENDIAN_BIG)
-		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
-
-#endif
-
-		tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
-
-		if (errno) {
-		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		  return ERR_PTRACE_PEEKTEXT;
-		}
-
-#ifdef ENDIAN_LITTLE
-		memcpy(&((char *) &tr)[WORD_SIZE * 3], &ttr, WORD_SIZE);
-
-#elif defined(ENDIAN_BIG)
-		memcpy(&tr, &ttr, WORD_SIZE);
-
-#endif
-
-		r = tr;
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
-	      break;
-
-	    case D_STRING_R15: case D_STRING_R14: case D_STRING_R13: case D_STRING_R12: case D_STRING_RBP: case D_STRING_RBX: case D_STRING_R11: case D_STRING_R10: case D_STRING_R9: case D_STRING_R8: case D_STRING_RAX: case D_STRING_RCX: case D_STRING_RDX: case D_STRING_RSI: case D_STRING_RDI: case D_STRING_RIP: case D_STRING_CS: case D_STRING_EFLAGS: case D_STRING_RSP: case D_STRING_SS: case D_STRING_FS_BASE: case D_STRING_GS_BASE: case D_STRING_DS: case D_STRING_ES: case D_STRING_FS: case D_STRING_GS:
-	      {
-		winfo("   string: ", stderr, tracee);
-
-		unsigned long long int maddr = r + rvs[td[tdi].deref[ri][dl] - (_DNOUSE_STRINGS + 1)];
-
-		while (r < maddr) {
-		  errno = 0;
-
-		  long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
-
-		  if (errno) {
-		    werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		    return ERR_PTRACE_PEEKTEXT;
-		  }
-
 #ifdef ENDIAN_LITTLE
-		  fputc(*(char *) &s, stderr);
+	      memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
 
 #elif defined(ENDIAN_BIG)
-		  fputc(((char *) &s)[WORD_SIZE - 1], stderr);
+	      memcpy(&tr, &ttr, WORD_SIZE);
 
 #endif
 
-		  r++;
-		}
+	      r = tr;
+	    }
+	    else if (td[tdi].deref[ri][dl] == D_QW) {
+	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-		fputc('\n', stderr);
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
-	      break;
+	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	    case D_NSTRING:
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
+	      }
+
+#ifdef ENDIAN_LITTLE
+	      memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+	      memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
+
+#endif
+
+	      ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
+
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
+	      }
+
+#ifdef ENDIAN_LITTLE
+	      memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+	      memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
+
+#endif
+
+	      tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
+
+	      if (errno) {
+		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		return ERR_PTRACE_PEEKTEXT;
+	      }
+
+#ifdef ENDIAN_LITTLE
+	      memcpy(&((char *) &tr)[WORD_SIZE * 3], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+	      memcpy(&tr, &ttr, WORD_SIZE);
+
+#endif
+
+	      r = tr;
+	    }
+	    else if (td[tdi].deref[ri][dl] > _DNOUSE_STRINGS && td[tdi].deref[ri][dl] < _DNOUSE_STRINGE) {
+	      winfo("   string: ", stderr, tracee);
+
+	      unsigned long long int maddr = r + rvs[td[tdi].deref[ri][dl] - (_DNOUSE_STRINGS + 1)];
+
+	      while (r < maddr) {
+		errno = 0;
+
+		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
+
+#ifdef ENDIAN_LITTLE
+		fputc(*(char *) &s, stderr);
+
+#elif defined(ENDIAN_BIG)
+		fputc(((char *) &s)[WORD_SIZE - 1], stderr);
+
+#endif
+
+		r++;
+	      }
+
+	      fputc('\n', stderr);
+	    }
+	    else if (td[tdi].deref[ri][dl] == D_NSTRING) {
 	      winfo("   string: ", stderr, tracee);
 
 	      while (1) {
@@ -305,17 +290,13 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      r++;
 
 	      fputc('\n', stderr);
-
-	      break;
-
-	    case D_END:
+	    }
+	    else if (td[tdi].deref[ri][dl] == D_END) {
 	      fprintf(stderr, INFO_PREFIX "(%llu):    deref: %llu\n", (unsigned long long int) tracee, r);
 
 	      exhausted = 1;
-
-	      break;
-
-	    default:
+	    }
+	    else {
 	      werr("illegal derefence\n", stderr, tracee);
 
 	      return ERR_ILLEGAL_DEREF;

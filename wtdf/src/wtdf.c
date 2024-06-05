@@ -80,7 +80,7 @@ enum error verify(struct trace_def *tda, size_t n) {
 	_Bool ends_correct = 0;
 
 	for (size_t dl = 0; dl < DEREF_LEVEL; dl++) {
-	  if (tda[tdi].deref[ri][dl] != D_W && tda[tdi].deref[ri][dl] != D_DW && tda[tdi].deref[ri][dl] != D_QW && tda[tdi].deref[ri][dl] != D_NSTRING && tda[tdi].deref[ri][dl] != D_STRING_R15 && tda[tdi].deref[ri][dl] != D_STRING_R14 && tda[tdi].deref[ri][dl] != D_STRING_R13 && tda[tdi].deref[ri][dl] != D_STRING_R12 && tda[tdi].deref[ri][dl] != D_STRING_RBP && tda[tdi].deref[ri][dl] != D_STRING_RBX && tda[tdi].deref[ri][dl] != D_STRING_R11 && tda[tdi].deref[ri][dl] != D_STRING_R10 && tda[tdi].deref[ri][dl] != D_STRING_R9 && tda[tdi].deref[ri][dl] != D_STRING_R8 && tda[tdi].deref[ri][dl] != D_STRING_RAX && tda[tdi].deref[ri][dl] != D_STRING_RCX && tda[tdi].deref[ri][dl] != D_STRING_RDX && tda[tdi].deref[ri][dl] != D_STRING_RSI && tda[tdi].deref[ri][dl] != D_STRING_RDI && tda[tdi].deref[ri][dl] != D_STRING_RIP && tda[tdi].deref[ri][dl] != D_STRING_CS && tda[tdi].deref[ri][dl] != D_STRING_EFLAGS && tda[tdi].deref[ri][dl] != D_STRING_RSP && tda[tdi].deref[ri][dl] != D_STRING_SS && tda[tdi].deref[ri][dl] != D_STRING_FS_BASE && tda[tdi].deref[ri][dl] != D_STRING_GS_BASE && tda[tdi].deref[ri][dl] != D_STRING_DS && tda[tdi].deref[ri][dl] != D_STRING_ES && tda[tdi].deref[ri][dl] != D_STRING_FS && tda[tdi].deref[ri][dl] != D_STRING_GS && tda[tdi].deref[ri][dl] != D_END) {
+	  if (! ((tda[tdi].deref[ri][dl] > _DNOUSE_STRINGS && tda[tdi].deref[ri][dl] < _DNOUSE_STRINGE) || tda[tdi].deref[ri][dl] == D_W || tda[tdi].deref[ri][dl] == D_DW || tda[tdi].deref[ri][dl] == D_QW)) {
 	    return ERR_INVALID_DEREF;
 	  }
 
