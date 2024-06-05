@@ -2,4 +2,4 @@ Vigilante depends on some implementation-specific behavior to work and is NOT st
 Currently, Vigilante only works on Linux and similar environments that can emulate its behavior. Check the source for the Linux-specific headers it includes.
 Before you translate Vigilante, make the necessary changes to vigilante/src/vconfig.h according to your implementation.
 
-WTDF is meant to be translated as a library. Use it with your own program to generate TDF files.
+WTDF is meant to be translated as a library. Link it with your own program to generate TDF files.
