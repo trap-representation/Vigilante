@@ -6,11 +6,19 @@
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <errno.h>
+#include <string.h>
 
 #include "utils.h"
+#include "vconfig.h"
 
 #define ERROR_PREFIX "vigilante (error): "
 #define INFO_PREFIX "vigilante (info): "
+
+#ifdef ENDIAN_LITTLE
+#elif defined(ENDIAN_BIG)
+#else
+_Static_assert(0, "define the endianness of your implementation in vconfig.h");
+#endif
 
 enum error wait_syscall(pid_t tracee) {
   while (1) {
@@ -227,50 +235,89 @@ enum error perform_trace(unsigned long long int sc, struct user_regs_struct user
 	      break;
 
 	    case D_DW:
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+	      {
+		long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
-	      }
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+		long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
+
+#ifdef ENDIAN_LITTLE
+		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+		memcpy(&tr, &ttr, WORD_SIZE);
+
+#endif
+
+		r = tr;
 	      }
 
 	      break;
 
 	    case D_QW:
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+	      {
+		long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
-	      }
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+		long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
-	      }
-	      break;
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+#ifdef ENDIAN_LITTLE
+		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
-	      }
+#elif defined(ENDIAN_BIG)
+		memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
 
-	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
+#endif
 
-	      if (errno) {
-		werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
-		return ERR_PTRACE_PEEKTEXT;
+		ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
+
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
+
+#ifdef ENDIAN_LITTLE
+		memcpy(&((char *) &tr)[WORD_SIZE * 2], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+		memcpy(&((char *) &tr)[WORD_SIZE], &ttr, WORD_SIZE);
+
+#endif
+
+		tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
+
+		if (errno) {
+		  werr("ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n", stderr, tracee);
+		  return ERR_PTRACE_PEEKTEXT;
+		}
+
+#ifdef ENDIAN_LITTLE
+		memcpy(&((char *) &tr)[WORD_SIZE * 3], &ttr, WORD_SIZE);
+
+#elif defined(ENDIAN_BIG)
+		memcpy(&tr, &ttr, WORD_SIZE);
+
+#endif
+
+		r = tr;
 	      }
 
 	      break;
@@ -331,25 +378,25 @@ enum error read_tdf(char *file, struct trace_def **td, size_t *tdn, pid_t tracee
   FILE *tdf = fopen(file, "rb");
 
   if (tdf == NULL) {
-    werr( "fopen(file, \"rb\") failed\n", stderr, tracee);
+    werr("fopen(file, \"rb\") failed\n", stderr, tracee);
     return ERR_OPEN_TDF;
   }
 
   if (fread(tdn, sizeof(*tdn), 1, tdf) < 1) {
     if (!ferror(tdf)) {
-      werr( "invalid TDF file format\n", stderr, tracee);
+      werr("invalid TDF file format\n", stderr, tracee);
       fclose(tdf);
       return ERR_INVALID_FILEFORMAT;
     }
     else {
-      werr( "failed to read from TDF\n", stderr, tracee);
+      werr("failed to read from TDF\n", stderr, tracee);
       fclose(tdf);
       return ERR_FAILED_TO_READ_TDF;
     }
   }
 
   if ((*td = malloc(sizeof(**td) * *tdn)) == NULL) {
-    werr( "malloc(sizeof(**td) * *tdn) failed\n", stderr, tracee);
+    werr("malloc(sizeof(**td) * *tdn) failed\n", stderr, tracee);
     fclose(tdf);
     return ERR_MALLOC;
   }
