@@ -9,7 +9,7 @@
 #define WARNING_PREFIX "vigilante (warn): "
 
 #define diag(f, tracee, pre, ...)					\
-  fprintf(f, pre "(%llu): ", (unsigned long long int) tracee);		\
+  fprintf(f, pre "(%lld): ", (long long int) tracee);			\
   fprintf(f, __VA_ARGS__);
 
 enum error get_pid(char *pid_s, pid_t *tracee);

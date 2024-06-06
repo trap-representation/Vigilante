@@ -24,7 +24,7 @@
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    diag(stderr, 0, ERROR_PREFIX, "usage:\n"
+    diag(stderr, -1, ERROR_PREFIX, "usage:\n"
 	 "PID config (optional)\n");
     return ERR_NOARGS;
   }

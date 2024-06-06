@@ -20,7 +20,7 @@ enum error get_pid(char *pid_s, pid_t *tracee) {
       *tracee += pid_s[pc] - '0';
     }
     else {
-      diag(stderr, 0, ERROR_PREFIX, "invalid PID\n");
+      diag(stderr, -1, ERROR_PREFIX, "invalid PID\n");
       return ERR_INVALID_PID;
     }
   }
