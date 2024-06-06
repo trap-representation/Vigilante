@@ -4,4 +4,4 @@ Before you translate Vigilante, make the necessary changes to vigilante/src/vcon
 
 WTDF is meant to be translated as a library. Link it with your own program to generate TDF files.
 
-NOTE: I will NOT be accepting pull requests. If you want to fork this repository, feel free to, but do not open pull requests.
+NOTE: I will NOT be accepting pull requests. If you want to fork this repository, feel free to do so, but do not open pull requests.
