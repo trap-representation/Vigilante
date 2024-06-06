@@ -17,21 +17,15 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h> 
-#include <sys/ptrace.h>
-#include <sys/wait.h>
 #include <sys/types.h>
-#include <sys/user.h>
 
-#include "utils.h"
 #include "errors.h"
-#include "cfg.h"
+#include "tracer.h"
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    werr("usage:\n\
-  PID config (optional)\n", stderr, 0);
+    diag(stderr, 0, ERROR_PREFIX, "usage:\n"
+	 "PID config (optional)\n");
     return ERR_NOARGS;
   }
 
@@ -43,60 +37,5 @@ int main(int argc, char *argv[]) {
     return r;
   }
 
-  char *tdf = argv[2];
-
-  if (ptrace(PTRACE_ATTACH, tracee, NULL, NULL) == -1) {
-    werr("ptrace(PTRACE_ATTACH, tracee, NULL, NULL) failed\n", stderr, tracee);
-    return ERR_PTRACE_ATTACH;
-  }
-
-  if (waitpid(tracee, NULL, 0) == -1) {
-    fprintf(stderr, "waitpid(tracee, NULL, 0) failed\n");
-    return ERR_WAITPID;
-  }
-  
-  if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) == -1) {
-    werr("ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) failed\n", stderr, tracee);
-    return ERR_PTRACE_SETOPTIONS_TRACESYSGOOD;
-  }
-
-  if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) == -1) {
-    werr("ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) failed\n", stderr, tracee);
-    return ERR_PTRACE_SETOPTIONS_TRACESYSGOOD;
-  }
-
-  struct trace_def *td;
-  size_t tdn;
-
-  if ((r = read_tdf(tdf, &td, &tdn, tracee)) != ERR_SUCCESS) {
-    return r;
-  }
-
-  while (1) {
-    r = wait_syscall(tracee);
-
-    if (r == ERR_WAITPID || r == ERR_TERMINATED) {
-      return r;
-    }
-
-    r = wait_syscall(tracee);
-
-    if (r == ERR_WAITPID || r == ERR_TERMINATED) {
-      return r;
-    }
-
-    struct user_regs_struct user_regs;
-    if (ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) == -1) {
-      werr("ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) failed\n", stderr, tracee);
-      return ERR_PTRACE_GETREGS;
-    }
-
-    unsigned long long int sc = user_regs.orig_rax;
-
-    r = perform_trace(sc, user_regs, td, tdn, tracee);
-  }
-  
-  free(td);
-
-  return r;
+  return trace(tracee, argv[2]);
 }
