@@ -12,13 +12,13 @@
 static enum error wait_syscall(pid_t tracee) {
   while (1) {
     if (ptrace(PTRACE_SYSCALL, tracee, NULL, NULL) == -1) {
-      diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SYSCALL, tracee, NULL, NULL) failed\n");
+      diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SYSCALL, tracee, NULL, NULL) failed; %s\n", strerror(errno));
       return ERR_PTRACE_SYSCALL;
     }
 
     int wstatus;
     if (waitpid(tracee, &wstatus, 0) == -1) {
-      diag(stderr, tracee, ERROR_PREFIX, "waitpid(tracee, &wstatus, 0) failed\n");
+      diag(stderr, tracee, ERROR_PREFIX, "waitpid(tracee, &wstatus, 0) failed; %s\n", strerror(errno));
       return ERR_WAITPID;
     }
 
@@ -116,23 +116,36 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 	    if (td[tdi].deref[ri][dl] == D_W) {
 	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, INFORMATIVE_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, INFORMATIVE_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 	    }
 	    else if(td[tdi].deref[ri][dl] == D_DW) {
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
 		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
 		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -148,16 +161,24 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 	    else if (td[tdi].deref[ri][dl] == D_QW) {
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
 		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) faileda; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
 		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -170,9 +191,13 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
 		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
+		return ERR_PTRACE_PEEKTEXT;
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -185,8 +210,12 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
 
-	      if (errno) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+	      if (errno == EFAULT || errno == EIO) {
+		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
+		break;
+	      }
+	      else {
+		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
 		break;
 	      }
 
@@ -210,9 +239,13 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-		if (errno) {
-		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
 		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
 		}
 
 #ifdef ENDIAN_LITTLE
@@ -236,9 +269,13 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-		if (errno) {
-		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, r, NULL) failed\n");
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
 		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
 		}
 
 		if (*(char *) &s != '\0') {
@@ -278,22 +315,22 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 enum error trace(pid_t tracee, char *tdf) {
   if (ptrace(PTRACE_ATTACH, tracee, NULL, NULL) == -1) {
-    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_ATTACH, tracee, NULL, NULL) failed\n");
+    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_ATTACH, tracee, NULL, NULL) failed; %s\n", strerror(errno));
     return ERR_PTRACE_ATTACH;
   }
 
   if (waitpid(tracee, NULL, 0) == -1) {
-    diag(stderr, tracee, ERROR_PREFIX, "waitpid(tracee, NULL, 0) failed\n");
+    diag(stderr, tracee, ERROR_PREFIX, "waitpid(tracee, NULL, 0) failed; %s\n", strerror(errno));
     return ERR_WAITPID;
   }
   
   if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) == -1) {
-    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) failed\n");
+    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACECLONE) failed; %s\n", strerror(errno));
     return ERR_PTRACE_SETOPTIONS_TRACESYSGOOD;
   }
 
   if (ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) == -1) {
-    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) failed\n");
+    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_SETOPTIONS, tracee, NULL, PTRACE_O_TRACESYSGOOD) failed; %s\n", strerror(errno));
     return ERR_PTRACE_SETOPTIONS_TRACESYSGOOD;
   }
 
@@ -321,7 +358,7 @@ enum error trace(pid_t tracee, char *tdf) {
 
     struct user_regs_struct user_regs;
     if (ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) == -1) {
-      diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) failed\n");
+      diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) failed; %s\n", strerror(errno));
       return ERR_PTRACE_GETREGS;
     }
 
