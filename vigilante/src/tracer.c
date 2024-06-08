@@ -31,7 +31,7 @@ static enum error wait_syscall(pid_t tracee) {
   }
 }
 
-static enum error _trace(unsigned long long int sc, struct user_regs_struct user_regs, struct trace_def *td, size_t tdn, pid_t tracee) {
+static enum error _trace(unsigned long long int sc, struct user_regs_struct user_regs, struct trace_def *td, size_t tdn, pid_t tracee, enum state e) {
   /* Do not change the order of the stored values in rvs and rss */
 
   unsigned long long int rvs[] = {
@@ -99,53 +99,66 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
   for (size_t tdi = 0; tdi < tdn; tdi++) {
     if (sc == td[tdi].syscall || td[tdi].syscall == SC_ALL) {
+      if (e == STATE_ENTRY) {
+	diag(stderr, tracee, INFORMATIVE_PREFIX, "ENTRY\n");
+      }
+      else {
+	diag(stderr, tracee, INFORMATIVE_PREFIX, "EXIT\n");
+      }
+
       diag(stderr, tracee, INFORMATIVE_PREFIX, "syscall: %llu\n", sc);
 
       for (enum reg ri = 0; ri < REG_N; ri++) {
-	if (td[tdi].trace_regs[ri] == TRACE) {
+	if (td[tdi].trace_regs[e][ri] == TRACE) {
 	  diag(stderr, tracee, INFORMATIVE_PREFIX, "  %s: %llu\n", rss[ri], rvs[ri]);
 
 	  unsigned long long int r = rvs[ri];
 	  _Bool exhausted = 0;
 
-	  if (td[tdi].deref[ri][0] == D_END) {
+	  if (td[tdi].deref[e][ri][0] == D_END) {
 	    exhausted = 1;
 	  }
 
 	  for (size_t dl = 0; !exhausted && dl < DEREF_LEVEL; dl++) {
-	    if (td[tdi].deref[ri][dl] == D_W) {
+	    if (td[tdi].deref[e][ri][dl] == D_W) {
 	      r = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, INFORMATIVE_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, INFORMATIVE_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 	    }
-	    else if(td[tdi].deref[ri][dl] == D_DW) {
+	    else if(td[tdi].deref[e][ri][dl] == D_DW) {
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -158,27 +171,31 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      r = tr;
 	    }
-	    else if (td[tdi].deref[ri][dl] == D_QW) {
+	    else if (td[tdi].deref[e][ri][dl] == D_QW) {
 	      long tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) faileda; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) faileda; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 	      long ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE), NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -191,13 +208,15 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      ttr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
-		return ERR_PTRACE_PEEKTEXT;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 2), NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -210,13 +229,15 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      tr = ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL);
 
-	      if (errno == EFAULT || errno == EIO) {
-		diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
-		break;
-	      }
-	      else {
-		diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
-		break;
+	      if (errno) {
+		if (errno == EFAULT || errno == EIO) {
+		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
+		  break;
+		}
+		else {
+		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) (r + WORD_SIZE * 3), NULL) failed; %s\n", strerror(errno));
+		  return ERR_PTRACE_PEEKTEXT;
+		}
 	      }
 
 #ifdef ENDIAN_LITTLE
@@ -229,23 +250,25 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      r = tr;
 	    }
-	    else if (td[tdi].deref[ri][dl] > _DNOUSE_STRINGS && td[tdi].deref[ri][dl] < _DNOUSE_STRINGE) {
+	    else if (td[tdi].deref[e][ri][dl] > _DNOUSE_STRINGS && td[tdi].deref[e][ri][dl] < _DNOUSE_STRINGE) {
 	      diag(stderr, tracee, INFORMATIVE_PREFIX, "    string: ");
 
-	      unsigned long long int maddr = r + rvs[td[tdi].deref[ri][dl] - (_DNOUSE_STRINGS + 1)];
+	      unsigned long long int maddr = r + rvs[td[tdi].deref[e][ri][dl] - (_DNOUSE_STRINGS + 1)];
 
 	      while (r < maddr) {
 		errno = 0;
 
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-		if (errno == EFAULT || errno == EIO) {
-		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		  break;
-		}
-		else {
-		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		  return ERR_PTRACE_PEEKTEXT;
+		if (errno) {
+		  if (errno == EFAULT || errno == EIO) {
+		    diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		    break;
+		  }
+		  else {
+		    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		    return ERR_PTRACE_PEEKTEXT;
+		  }
 		}
 
 #ifdef ENDIAN_LITTLE
@@ -261,7 +284,7 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      fputc('\n', stderr);
 	    }
-	    else if (td[tdi].deref[ri][dl] == D_NSTRING) {
+	    else if (td[tdi].deref[e][ri][dl] == D_NSTRING) {
 	      diag(stderr, tracee, INFORMATIVE_PREFIX, "    string: ");
 
 	      while (1) {
@@ -269,13 +292,15 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 		long s = ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL);
 
-		if (errno == EFAULT || errno == EIO) {
-		  diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		  break;
-		}
-		else {
-		  diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
-		  return ERR_PTRACE_PEEKTEXT;
+		if (errno) {
+		  if (errno == EFAULT || errno == EIO) {
+		    diag(stderr, tracee, WARNING_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		    break;
+		  }
+		  else {
+		    diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_PEEKTEXT, tracee, (void *) r, NULL) failed; %s\n", strerror(errno));
+		    return ERR_PTRACE_PEEKTEXT;
+		  }
 		}
 
 		if (*(char *) &s != '\0') {
@@ -292,7 +317,7 @@ static enum error _trace(unsigned long long int sc, struct user_regs_struct user
 
 	      fputc('\n', stderr);
 	    }
-	    else if (td[tdi].deref[ri][dl] == D_END) {
+	    else if (td[tdi].deref[e][ri][dl] == D_END) {
 	      diag(stderr, tracee, INFORMATIVE_PREFIX, "    deref: %llu\n", r);
 
 	      exhausted = 1;
@@ -350,12 +375,6 @@ enum error trace(pid_t tracee, char *tdf) {
       return r;
     }
 
-    r = wait_syscall(tracee);
-
-    if (r == ERR_WAITPID || r == ERR_TERMINATED) {
-      return r;
-    }
-
     struct user_regs_struct user_regs;
     if (ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) == -1) {
       diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) failed; %s\n", strerror(errno));
@@ -364,7 +383,24 @@ enum error trace(pid_t tracee, char *tdf) {
 
     unsigned long long int sc = user_regs.orig_rax;
 
-    r = _trace(sc, user_regs, td, tdn, tracee);
+    if ((r = _trace(sc, user_regs, td, tdn, tracee, STATE_ENTRY)) != ERR_SUCCESS) {
+      return r;
+    }
+
+    r = wait_syscall(tracee);
+
+    if (r == ERR_WAITPID || r == ERR_TERMINATED) {
+      return r;
+    }
+
+    if (ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) == -1) {
+      diag(stderr, tracee, ERROR_PREFIX, "ptrace(PTRACE_GETREGS, tracee, NULL, &user_regs) failed; %s\n", strerror(errno));
+      return ERR_PTRACE_GETREGS;
+    }
+
+    if ((r = _trace(sc, user_regs, td, tdn, tracee, STATE_EXIT)) != ERR_SUCCESS) {
+      return r;
+    }
   }
   
   free(td);

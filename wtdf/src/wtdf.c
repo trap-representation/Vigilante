@@ -26,9 +26,11 @@ void init_td(struct trace_def *tda, size_t n) {
   for (size_t tdi = 0; tdi < n; tdi++) {
     tda[tdi].syscall = 0;
 
-    for (size_t ri = 0; ri < REG_N; ri++) {
-      tda[tdi].trace_regs[ri] = NOTRACE;
-      tda[tdi].deref[ri][0] = D_END;
+    for (size_t e = 0; e < 2; e++) {
+      for (size_t ri = 0; ri < REG_N; ri++) {
+	tda[tdi].trace_regs[e][ri] = NOTRACE;
+	tda[tdi].deref[e][ri][0] = D_END;
+      }
     }
   }
 }
@@ -37,13 +39,13 @@ void trace_syscall(unsigned long long int sc, struct trace_def *td) {
   td->syscall = sc;
 }
 
-void trace_regs(enum reg r, struct trace_def *td) {
-  td->trace_regs[r] = TRACE;
+void trace_regs(enum reg r, enum state e, struct trace_def *td) {
+  td->trace_regs[e][r] = TRACE;
 }
 
-void trace_deref(enum dereference *d, size_t n, enum reg r, struct trace_def *td) {
+void trace_deref(enum dereference *d, size_t n, enum reg r, enum state e, struct trace_def *td) {
   for (size_t i = 0; i < n; i++) {
-    td->deref[r][i] = d[i];
+    td->deref[e][r][i] = d[i];
   }
 }
 
@@ -71,27 +73,25 @@ int write_td(struct trace_def *td, size_t n, char *file) {
 
 enum error verify(struct trace_def *tda, size_t n) {
   for (size_t tdi = 0; tdi < n; tdi++) {
-    for (size_t ri = 0; ri < REG_N; ri++) {
-      if (tda[tdi].trace_regs[ri] == NOTRACE && tda[tdi].deref[ri][0] != D_END) {
-	return ERR_DEREF_ON_NOTRACE;
-      }
+    for (size_t e = 0; e < 2; e++) {
+      for (size_t ri = 0; ri < REG_N; ri++) {
+	if (tda[tdi].trace_regs[e][ri] == TRACE) {
+	  _Bool ends_correct = 0;
 
-      if (tda[tdi].trace_regs[ri] == TRACE) {
-	_Bool ends_correct = 0;
+	  for (size_t dl = 0; dl < DEREF_LEVEL; dl++) {
+	    if (! ((tda[tdi].deref[e][ri][dl] > _DNOUSE_STRINGS && tda[tdi].deref[e][ri][dl] < _DNOUSE_STRINGE) || tda[tdi].deref[e][ri][dl] == D_W || tda[tdi].deref[e][ri][dl] == D_DW || tda[tdi].deref[e][ri][dl] == D_QW)) {
+	      return ERR_INVALID_DEREF;
+	    }
 
-	for (size_t dl = 0; dl < DEREF_LEVEL; dl++) {
-	  if (! ((tda[tdi].deref[ri][dl] > _DNOUSE_STRINGS && tda[tdi].deref[ri][dl] < _DNOUSE_STRINGE) || tda[tdi].deref[ri][dl] == D_W || tda[tdi].deref[ri][dl] == D_DW || tda[tdi].deref[ri][dl] == D_QW)) {
-	    return ERR_INVALID_DEREF;
+	    if (tda[tdi].deref[e][ri][dl] == D_END) {
+	      ends_correct = 1;
+	      break;
+	    }
 	  }
 
-	  if (tda[tdi].deref[ri][dl] == D_END) {
-	    ends_correct = 1;
-	    break;
+	  if (!ends_correct) {
+	    return ERR_ILLEGAL_END_DEREF;
 	  }
-	}
-
-	if (!ends_correct) {
-	  return ERR_ILLEGAL_END_DEREF;
 	}
       }
     }

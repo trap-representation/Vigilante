@@ -9,7 +9,7 @@
 /* #define ENDIAN_BIG */
 
 /* Change this depending on how many level of dereference you want to have */
-#define VCONF_DEREF_LEVEL 512
+#define VCONF_DEREF_LEVEL 32
 
 /* Change this to a value that does not equal to any syscall number on your system */
 #define VCONF_SC_ALL 65536

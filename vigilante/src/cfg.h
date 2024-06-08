@@ -13,6 +13,11 @@ enum trace {
   TRACE
 };
 
+enum state {
+  STATE_ENTRY,
+  STATE_EXIT
+};
+
 /* Do not change the order of the enumeration constants in reg and dereference*/
 
 enum reg {
@@ -82,8 +87,8 @@ enum dereference {
 
 struct trace_def {
   unsigned long long int syscall;
-  _Bool trace_regs[REG_N];
-  enum dereference deref[REG_N][DEREF_LEVEL];
+  _Bool trace_regs[2][REG_N];
+  enum dereference deref[2][REG_N][DEREF_LEVEL];
 };
 
 #endif
